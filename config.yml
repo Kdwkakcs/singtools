@@ -1,0 +1,40 @@
+clash:
+  - https://raw.githubusercontent.com/zhangkaiitugithub/passcro/main/speednodes.yaml
+#   - https://raw.githubusercontent.com/NiceVPN123/NiceVPN/main/Clash.yaml
+  - https://raw.githubusercontent.com/freenodes/freenodes/main/clash.yaml
+  - http://777.hz.cz/v2ray-10202000.txt
+  - https://raw.githubusercontent.com/thuhollow2/myconfig/main/config.yaml
+base:
+  - https://sub.sharecentre.online/sub
+  - https://sub.cm/YuwjbWN
+  - https://raw.githubusercontent.com/w1770946466/Auto_proxy/main/Long_term_subscription_num
+  - https://raw.githubusercontent.com/ermaozi01/free_clash_vpn/main/subscribe/v2ray.txt
+  - https://raw.githubusercontent.com/ts-sf/fly/main/v2
+  - https://raw.githubusercontent.com/NiceVPN123/NiceVPN/main/long
+  - https://raw.githubusercontent.com/MrMohebi/xray-proxy-grabber-telegram/master/collected-proxies/row-url/all.txt
+  - https://raw.githubusercontent.com/LalatinaHub/Mineral/master/result/nodes
+  - https://raw.githubusercontent.com/sashalsk/V2Ray/main/V2Ray-list-current
+  - https://raw.githubusercontent.com/sashalsk/V2Ray/main/V2Config
+  - https://raw.githubusercontent.com/soroushmirzaei/telegram-configs-collector/main/splitted/mixed
+  - https://raw.githubusercontent.com/MhdiTaheri/V2rayCollector/main/sub/mixbase64
+  - https://raw.githubusercontent.com/Leon406/SubCrawler/main/sub/share/vless
+  - https://raw.githubusercontent.com/thuhollow2/cn/main/config.yaml
+  - https://raw.githubusercontent.com/thuhollow2/myconfig/main/config.yaml
+  
+tg:
+ - https://t.me/s/hkaa0
+ - https://t.me/s/ccbaohe
+ - https://t.me/s/masco899
+ - https://t.me/s/wxdy666
+ - https://t.me/s/nice16688
+ - https://t.me/s/airproxies
+ - https://t.me/s/kxswa
+ - https://t.me/s/helloworld_1024
+ - https://t.me/s/dingyue_Center
+ - https://t.me/s/xuanyizero
+ - https://t.me/s/wangcai_8
+url:
+ - http://d.zaix.ru/ntiL.txt
+ - https://raw.githubusercontent.com/thuhollow2/cn/main/result.log
+local:
+  - saved_urls.txt

@@ -1,0 +1,12 @@
+{
+    "group": "job",
+    "speedtestMode": "pingonly",
+    "pingUrl": "https://www.gstatic.com/generate_204",
+    "downloadUrl":"http://speed.cloudflare.com/__down?bytes=100000",
+    "pingMethod":"pingonly",
+    "sortMethod":"rspeed",
+    "concurrency":50,
+    "timeout":5,
+    "detect": true,
+    "removeDup": true
+}
