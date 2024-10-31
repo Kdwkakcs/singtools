@@ -6,7 +6,7 @@ import (
 	"log"
 	"strings"
 
-	"github.com/donnanszex7654/lite/cache"
+	"github.com/Dkwkoaca/singtools/cache"
 	"github.com/spf13/cobra"
 )
 

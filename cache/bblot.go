@@ -126,10 +126,57 @@ func (manager *CacheManager) GetURLData(url string) (URLData, error) {
 
 		return gob.NewDecoder(bytes.NewReader(v)).Decode(&data)
 	})
+
+	// 如果数据不存在，尝试获取并存储
+	if err != nil && err.Error() == fmt.Sprintf("no data found for URL: %s", url) {
+		// 创建新的 HTTP 客户端
+		client := &http.Client{
+			Timeout: 30 * time.Second,
+			Transport: &http.Transport{
+				TLSHandshakeTimeout: 10 * time.Second,
+				DisableKeepAlives:   true,
+			},
+		}
+
+		// 获取内容
+		content, err := fetchContent(url, client)
+		if err != nil {
+			return URLData{}, fmt.Errorf("failed to fetch content: %w", err)
+		}
+
+		// 解析内容
+		parsedData, err := get.ParseContent(string(content))
+		if err != nil {
+			return URLData{}, fmt.Errorf("failed to parse content: %w", err)
+		}
+
+		// 转换为 JSON
+		contentStr, err := json.Marshal(parsedData)
+		if err != nil {
+			return URLData{}, fmt.Errorf("failed to marshal content: %w", err)
+		}
+
+		// 创建新的 URLData
+		data = URLData{
+			URL:     url,
+			Content: contentStr,
+			Hash:    hashContent(content),
+			Updated: time.Now(),
+		}
+
+		// 存储数据
+		if err := manager.StoreURLData(data); err != nil {
+			return URLData{}, fmt.Errorf("failed to store URL data: %w", err)
+		}
+
+		return data, nil
+	}
+
 	if err != nil {
 		return URLData{}, fmt.Errorf("failed to get URL data: %w", err)
 	}
 
+	// 解压缩内容
 	content, err := decompressContent(data.Content)
 	if err != nil {
 		return URLData{}, fmt.Errorf("failed to decompress content: %w", err)
@@ -545,4 +592,49 @@ func (manager *CacheManager) Glimpse() {
 	unique := get.Unique(all_node)
 	outbound := get.RemoveDuplicateOutbounds(unique)
 	fmt.Println("all nodes: ", len(all_node), ", unique nodes: ", len(unique), ", outbound nodes: ", len(outbound))
+}
+
+func (manager *CacheManager) UpdateURL(url string) error {
+	client := &http.Client{
+		Timeout: 30 * time.Second,
+		Transport: &http.Transport{
+			TLSHandshakeTimeout: 10 * time.Second,
+			DisableKeepAlives:   true,
+		},
+	}
+
+	content, err := fetchContent(url, client)
+	if err != nil {
+		return fmt.Errorf("failed to fetch content: %w", err)
+	}
+
+	// 尝试解析内容
+	data, err := get.ParseContent(string(content))
+	if err != nil {
+		// 如果解析失败，记录错误但继续处理
+		log.Printf("Warning: Failed to parse content for URL %s: %v\n", url, err)
+		return nil
+	}
+
+	// 计算内容哈希
+	hash := hashContent(content)
+
+	// 存储URL数据
+	contentStr, err := json.Marshal(data)
+	if err != nil {
+		return fmt.Errorf("failed to marshal content: %w", err)
+	}
+
+	urlData := URLData{
+		URL:     url,
+		Content: contentStr,
+		Hash:    hash,
+		Updated: time.Now(),
+	}
+
+	if err := manager.StoreURLData(urlData); err != nil {
+		return fmt.Errorf("failed to store URL data: %w", err)
+	}
+
+	return nil
 }

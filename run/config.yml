@@ -21,7 +21,7 @@ base:
   - https://raw.githubusercontent.com/thuhollow2/cn/main/config.yaml
   - https://raw.githubusercontent.com/thuhollow2/myconfig/main/config.yaml
   
-tg:
+category:
  - https://t.me/s/hkaa0
  - https://t.me/s/ccbaohe
  - https://t.me/s/masco899
