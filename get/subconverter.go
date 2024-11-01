@@ -2,8 +2,11 @@ package get
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"regexp"
+	"strings"
 	"time"
 	"unsafe"
 
@@ -53,18 +56,34 @@ func ParseUrl(url string) ([]interface{}, error) {
 }
 
 func ParseContent(context string) ([]interface{}, error) {
-	nodes := NodeToSingbox(context, "multi")
-	if nodes == "[]" {
-		data, types, err := getContentType(context)
-		if err != nil {
-			return nil, err
+	// check if the context contains: vless vmess trojan ss ssr hysteria2 hysteria1
+	prefix := []string{"vmess:/", "vless:/", "trojan:/", "ss:/", "ssr:/", "hysteria2:/", "hysteria:/", "hy2:/", "hy:/", "tuic:/"}
+	prefixRegex := "(?m)^(" + strings.Join(prefix, "|") + ").*"
+	re := regexp.MustCompile(prefixRegex)
+	var nodes string
+	if ContainsPrefix(context, prefix) {
+		// find all the proxies and base64 encode them
+		proxies := re.FindAllString(context, -1)
+		proxiesStr := strings.Join(proxies, "\n")
+		proxiesStr = base64.StdEncoding.EncodeToString([]byte(proxiesStr))
+		nodes = NodeToSingbox(proxiesStr, "multi")
+		if nodes == "[]" {
+			return nil, fmt.Errorf("no proxies found")
 		}
-		if types == "json" {
-			return convertToSingbox(data), nil
-		} else if types == "yaml" {
-			return convertToYaml(data), nil
+	} else {
+		nodes = NodeToSingbox(context, "multi")
+		if nodes == "[]" {
+			data, types, err := getContentType(context)
+			if err != nil {
+				return nil, err
+			}
+			if types == "json" {
+				return convertToSingbox(data), nil
+			} else if types == "yaml" {
+				return convertToYaml(data), nil
+			}
+			return nil, nil
 		}
-		return nil, nil
 	}
 	var jsondata []interface{}
 	err := json.Unmarshal([]byte(nodes), &jsondata)

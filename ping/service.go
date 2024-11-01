@@ -25,7 +25,7 @@ func NewService(config *Config) (*Service, error) {
 	config.InitWithDefaults()
 
 	// 初始化日志
-	logger := log.NewLogger(log.INFO)
+	logger := log.NewLogger("info")
 
 	// 创建测试管理器
 	testManager, err := NewTestManager(config)

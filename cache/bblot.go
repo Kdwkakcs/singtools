@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/gob"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"sync"
@@ -15,15 +14,18 @@ import (
 	"compress/gzip"
 
 	"github.com/Dkwkoaca/singtools/get"
+	"github.com/Dkwkoaca/singtools/log"
 	"github.com/sagernet/sing/common/json"
 	bolt "go.etcd.io/bbolt"
 )
 
 type CacheManager struct {
-	db   *bolt.DB
-	path string
-	mu   sync.Mutex
-	temp string
+	db      *bolt.DB
+	path    string
+	mu      sync.Mutex
+	writeMu sync.Mutex
+	temp    string
+	logger  *log.Logger
 }
 
 // 添加常量定义
@@ -43,7 +45,7 @@ type URLData struct {
 }
 
 // NewCacheManager 创建新的缓存管理器实例
-func NewCacheManager(dbPath string) (*CacheManager, error) {
+func NewCacheManager(dbPath string, logLevel string) (*CacheManager, error) {
 	// 检查是否为 gzip 文件
 	if isGzipFile(dbPath) {
 		// 创建临时文件用于解压缩
@@ -92,11 +94,15 @@ func NewCacheManager(dbPath string) (*CacheManager, error) {
 			return nil, err
 		}
 
+		logger := log.NewLogger(logLevel)
+
 		return &CacheManager{
-			db:   db,
-			path: dbPath,
-			mu:   sync.Mutex{},
-			temp: tmpFile,
+			db:      db,
+			path:    dbPath,
+			mu:      sync.Mutex{},
+			writeMu: sync.Mutex{},
+			temp:    tmpFile,
+			logger:  logger,
 		}, nil
 	}
 
@@ -113,9 +119,10 @@ func NewCacheManager(dbPath string) (*CacheManager, error) {
 	}
 
 	return &CacheManager{
-		db:   db,
-		path: dbPath,
-		mu:   sync.Mutex{},
+		db:      db,
+		path:    dbPath,
+		mu:      sync.Mutex{},
+		writeMu: sync.Mutex{},
 	}, nil
 }
 
@@ -183,6 +190,10 @@ func (manager *CacheManager) Stats() bolt.Stats {
 
 // StoreURLData 存储最新的 URL 数据，只保留最新的版本
 func (manager *CacheManager) StoreURLData(data URLData) error {
+	// 获取写入锁
+	manager.writeMu.Lock()
+	defer manager.writeMu.Unlock()
+
 	compressedContent, err := compressContent(data.Content)
 	if err != nil {
 		return err
@@ -351,7 +362,7 @@ func (manager *CacheManager) getUpdateContent(urls []string) string {
 	var content []interface{}
 	urlData, err := manager.GetSubURLsData(urls)
 	if err != nil {
-		log.Println("Error getting URLs:", err)
+		manager.logger.Error("Error getting URLs: " + err.Error())
 		return ""
 	}
 
@@ -367,7 +378,7 @@ func (manager *CacheManager) getUpdateContent(urls []string) string {
 		// 将新的代理数据存储到Proxies bucket中
 		err = manager.mergeNewProxies(data)
 		if err != nil {
-			log.Printf("Error merging new proxies: %v", err)
+			manager.logger.Error("Error merging new proxies: " + err.Error())
 		}
 	}
 
@@ -480,7 +491,7 @@ func (manager *CacheManager) CheckAndUpdateURL(url string, client *http.Client) 
 		// Store updated URL in URLs bucket
 		err = manager.AddURL(url)
 		if err != nil {
-			log.Printf("Failed to log URL %s to URLs bucket: %v\n", url, err)
+			manager.logger.Error("Failed to log URL %s to URLs bucket: " + err.Error())
 		}
 
 		// Log new updates in a new bucket (UpdatedContent)
@@ -492,7 +503,7 @@ func (manager *CacheManager) CheckAndUpdateURL(url string, client *http.Client) 
 			return updatedBucket.Put([]byte(url), []byte(contentStr))
 		})
 		if err != nil {
-			log.Printf("Failed to log updated content for URL %s: %v\n", url, err)
+			manager.logger.Error("Failed to log updated content for URL %s: " + err.Error())
 		}
 
 		fmt.Printf("URL %s has been updated.\n", url)
@@ -631,7 +642,7 @@ func (manager *CacheManager) GetUpdated() string {
 	})
 
 	if err != nil {
-		log.Printf("Failed to get updated content: %v\n", err)
+		manager.logger.Error("Failed to get updated content: " + err.Error())
 		return ""
 	}
 
@@ -641,7 +652,7 @@ func (manager *CacheManager) GetUpdated() string {
 func (manager *CacheManager) mergeAllURLs() (string, error) {
 	urlData, err := manager.GetAllURLData()
 	if err != nil {
-		log.Println("Error getting URLs:", err)
+		manager.logger.Error("Error getting URLs: " + err.Error())
 		return "", err
 	}
 
@@ -669,7 +680,7 @@ func (manager *CacheManager) mergeAllURLs() (string, error) {
 func (manager *CacheManager) Glimpse() {
 	data, err := manager.GetAllURLData()
 	if err != nil {
-		log.Println("Error getting URLs:", err)
+		manager.logger.Error("Error getting URLs: " + err.Error())
 		return
 	}
 	var all_node []interface{}
@@ -680,7 +691,7 @@ func (manager *CacheManager) Glimpse() {
 		var jsondata []interface{}
 		err := json.Unmarshal(url.Content, &jsondata)
 		if err != nil {
-			log.Print(urls, " ", string(context))
+			manager.logger.Error(urls + " " + string(context))
 		}
 
 		lens := len(context)
@@ -693,7 +704,7 @@ func (manager *CacheManager) Glimpse() {
 	}
 	unique := get.Unique(all_node)
 	outbound := get.RemoveDuplicateOutbounds(unique)
-	fmt.Println("all nodes: ", len(all_node), ", unique nodes: ", len(unique), ", outbound nodes: ", len(outbound))
+	fmt.Println("Total:", len(data), "all nodes: ", len(all_node), ", unique nodes: ", len(unique), ", outbound nodes: ", len(outbound))
 }
 
 func (manager *CacheManager) UpdateURL(url string) error {
@@ -713,8 +724,11 @@ func (manager *CacheManager) UpdateURL(url string) error {
 	// 尝试解析内容
 	data, err := get.ParseContent(string(content))
 	if err != nil {
-		// 如果解析失败，记录错误但继续处理
-		log.Printf("Warning: Failed to parse content for URL %s: %v\n", url, err)
+		if len(content) > 50 {
+			manager.logger.Warn("Failed to parse content for URL " + url + ": " + err.Error() + "\n" + string(content)[0:50])
+		} else {
+			manager.logger.Warn("Failed to parse content for URL " + url + ": " + err.Error() + "\n" + string(content))
+		}
 		return nil
 	}
 
@@ -733,6 +747,10 @@ func (manager *CacheManager) UpdateURL(url string) error {
 		Hash:    hash,
 		Updated: time.Now(),
 	}
+
+	// 只在实际写入数据时获取锁
+	manager.mu.Lock()
+	defer manager.mu.Unlock()
 
 	if err := manager.StoreURLData(urlData); err != nil {
 		return fmt.Errorf("failed to store URL data: %w", err)

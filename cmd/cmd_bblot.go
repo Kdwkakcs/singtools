@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"strings"
 
 	"github.com/Dkwkoaca/singtools/cache"
 	"github.com/spf13/cobra"
@@ -36,7 +35,7 @@ func runBblot(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	manager, err := cache.NewCacheManager(cacheFile)
+	manager, err := cache.NewCacheManager(cacheFile, "INFO")
 	if err != nil {
 		log.Println("Error creating cache manager:", err)
 		return
@@ -56,7 +55,7 @@ func runBblot(cmd *cobra.Command, args []string) {
 		log.Printf("Error getting URLs: %v\n", err)
 		return
 	}
-	fmt.Println(strings.Join(urls, "\n"))
+	fmt.Println("Count of urls:", len(urls))
 	manager.Glimpse()
 	// str := manager.GetUpdated()
 	// fmt.Println(str)

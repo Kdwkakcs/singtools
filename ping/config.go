@@ -3,8 +3,6 @@ package ping
 import (
 	"fmt"
 	"time"
-
-	"github.com/Dkwkoaca/singtools/log"
 )
 
 const (
@@ -49,7 +47,7 @@ const (
 	DefaultRetryDelay    = 1 * time.Second
 
 	// 日志配置默认值
-	DefaultLogLevel    = log.INFO
+	DefaultLogLevel    = "info"
 	DefaultLogFile     = "speedtest.log"
 	DefaultGeoIPDBPath = "GeoLite2-Country.mmdb"
 
@@ -84,9 +82,9 @@ type Config struct {
 	RemoteIP      bool `json:"remoteIP"`
 
 	// 日志配置
-	LogLevel    log.LogLevel `json:"logLevel"`
-	LogFile     string       `json:"logFile"`
-	GeoIPDBPath string       `json:"geoipDbPath"`
+	LogLevel    string `json:"logLevel"`
+	LogFile     string `json:"logFile"`
+	GeoIPDBPath string `json:"geoipDbPath"`
 
 	// 下载配置
 	DownloadTimeout    time.Duration `json:"download_timeout"`
@@ -109,7 +107,7 @@ func NewDefaultConfig() *Config {
 		RetryAttempts: DefaultRetries,
 		RetryDelay:    time.Millisecond * 100,
 		EnableMetrics: true,
-		LogLevel:      log.INFO,
+		LogLevel:      "info",
 		Initialized:   true, // 标记为已初始化
 	}
 	return config
@@ -175,7 +173,7 @@ func (c *Config) InitWithDefaults() {
 	}
 
 	// 日志配置初始化
-	if c.LogLevel == log.LogLevel(0) {
+	if c.LogLevel == "" {
 		c.LogLevel = DefaultLogLevel
 	}
 	if c.LogFile == "" {

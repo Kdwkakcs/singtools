@@ -1,7 +1,9 @@
 package cache
 
 import (
+	"fmt"
 	"log"
+	"sync"
 
 	"github.com/Dkwkoaca/singtools/get"
 )
@@ -18,24 +20,49 @@ func WriteUrlDB(yamlStr string, manager *CacheManager) {
 	saved_links, err := manager.GetURLs()
 	if err != nil {
 		log.Println("Error getting saved links:", err)
-		// 不要return，继续处理新的links
 	}
 
 	links = append(links, saved_links...)
 	links = get.Unique(links)
 	log.Println("write url count:", len(links))
 
-	// 更新URLs，但不要因为单个URL的错误而中断整个过程
-	errs := make([]error, 0)
+	// 创建一个带缓冲的通道来限制并发数
+	semaphore := make(chan struct{}, 10)
+	var wg sync.WaitGroup
+
+	// 使用channel来收集错误，避免锁的竞争
+	errChan := make(chan error, len(links))
+
 	for _, url := range links {
-		if err := manager.UpdateURL(url); err != nil {
-			log.Printf("Warning: Failed to update URL %s: %v\n", url, err)
-			errs = append(errs, err)
-			continue
-		}
+		wg.Add(1)
+		go func(url string) {
+			defer wg.Done()
+
+			// 获取信号量
+			semaphore <- struct{}{}
+			defer func() { <-semaphore }()
+
+			if err := manager.UpdateURL(url); err != nil {
+				errChan <- fmt.Errorf("failed to update URL %s: %v", url, err)
+			}
+		}(url)
 	}
 
-	// 即使有些URL更新失败，仍然生成合并内容
+	// 等待所有goroutine完成
+	wg.Wait()
+	close(errChan)
+
+	// 收集错误
+	var errs []error
+	for err := range errChan {
+		errs = append(errs, err)
+	}
+
+	// 在所有URL处理完成后，一次性获取锁并进行合并操作
+	manager.writeMu.Lock()
+	defer manager.writeMu.Unlock()
+
+	// 合并内容
 	content, err := manager.mergeAllURLs()
 	if err != nil {
 		log.Println("Error merging URLs:", err)

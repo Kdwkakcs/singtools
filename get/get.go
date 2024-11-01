@@ -94,7 +94,7 @@ func collectLinks(args GetConfig) {
 
 			resp, err := grequests.Get(link, ro)
 			if err != nil {
-				log.Println("Error accessing:", link, "Error:", err)
+				// log.Println("Error accessing:", link, "Error:", err)
 				return
 			}
 			defer resp.Close()

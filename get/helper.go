@@ -82,6 +82,7 @@ func ExtractLinks(ymlContent string) ([]string, error) {
 
 	urlRegex := regexp.MustCompile(`https?://[^\s]+`)
 	excludeFileRegex := regexp.MustCompile(`(?i)\.(apk|exe|dmg|pkg|msi|deb|rpm)$`)
+	registerRegex := regexp.MustCompile(`(?i)register`)
 
 	for key, value := range data {
 		items, ok := value.([]interface{})
@@ -109,7 +110,11 @@ func ExtractLinks(ymlContent string) ([]string, error) {
 						return
 					}
 					mu.Lock()
-					links = append(links, res...)
+					for _, link := range res {
+						if !registerRegex.MatchString(link) {
+							links = append(links, link)
+						}
+					}
 					mu.Unlock()
 				}(urlStr)
 
@@ -128,7 +133,11 @@ func ExtractLinks(ymlContent string) ([]string, error) {
 					}
 					matchedURLs := urlRegex.FindAllString(resp.String(), -1)
 					mu.Lock()
-					links = append(links, matchedURLs...)
+					for _, link := range matchedURLs {
+						if !registerRegex.MatchString(link) {
+							links = append(links, link)
+						}
+					}
 					mu.Unlock()
 				}(urlStr)
 
@@ -143,12 +152,12 @@ func ExtractLinks(ymlContent string) ([]string, error) {
 				scanner := bufio.NewScanner(file)
 				for scanner.Scan() {
 					line := scanner.Text()
-					if strings.HasPrefix(line, "http") && !excludeFileRegex.MatchString(line) {
+					if strings.HasPrefix(line, "http") && !excludeFileRegex.MatchString(line) && !registerRegex.MatchString(line) {
 						links = append(links, line)
 					}
 				}
 			default:
-				if !excludeFileRegex.MatchString(urlStr) {
+				if !excludeFileRegex.MatchString(urlStr) && !registerRegex.MatchString(urlStr) {
 					links = append(links, urlStr)
 				}
 			}
