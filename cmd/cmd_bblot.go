@@ -57,7 +57,7 @@ func runBblot(cmd *cobra.Command, args []string) {
 		return
 	}
 	fmt.Println(strings.Join(urls, "\n"))
-
-	str := manager.GetUpdated()
-	fmt.Println(str)
+	manager.Glimpse()
+	// str := manager.GetUpdated()
+	// fmt.Println(str)
 }

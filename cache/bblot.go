@@ -6,8 +6,13 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"sync"
 	"time"
+
+	"io"
+
+	"compress/gzip"
 
 	"github.com/Dkwkoaca/singtools/get"
 	"github.com/sagernet/sing/common/json"
@@ -18,6 +23,7 @@ type CacheManager struct {
 	db   *bolt.DB
 	path string
 	mu   sync.Mutex
+	temp string
 }
 
 // 添加常量定义
@@ -38,13 +44,84 @@ type URLData struct {
 
 // NewCacheManager 创建新的缓存管理器实例
 func NewCacheManager(dbPath string) (*CacheManager, error) {
+	// 检查是否为 gzip 文件
+	if isGzipFile(dbPath) {
+		// 创建临时文件用于解压缩
+		tmpFile := dbPath + ".tmp"
+
+		// 打开 gzip 文件
+		gzFile, err := os.Open(dbPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to open gzip file: %w", err)
+		}
+		defer gzFile.Close()
+
+		// 创建 gzip reader
+		gzReader, err := gzip.NewReader(gzFile)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create gzip reader: %w", err)
+		}
+		defer gzReader.Close()
+
+		// 创建临时文件
+		tmpDB, err := os.Create(tmpFile)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create temp file: %w", err)
+		}
+		defer tmpDB.Close()
+
+		// 解压缩到临时文件
+		_, err = io.Copy(tmpDB, gzReader)
+		if err != nil {
+			os.Remove(tmpFile)
+			return nil, fmt.Errorf("failed to decompress file: %w", err)
+		}
+
+		// 使用临时文件创建数据库连接
+		db, err := bolt.Open(tmpFile, 0600, &bolt.Options{Timeout: 1 * time.Second})
+		if err != nil {
+			os.Remove(tmpFile)
+			return nil, fmt.Errorf("failed to open database: %w", err)
+		}
+
+		// 创建所需的 bucket
+		err = createBuckets(db)
+		if err != nil {
+			db.Close()
+			os.Remove(tmpFile)
+			return nil, err
+		}
+
+		return &CacheManager{
+			db:   db,
+			path: dbPath,
+			mu:   sync.Mutex{},
+			temp: tmpFile,
+		}, nil
+	}
+
+	// 非压缩文件的正常处理
 	db, err := bolt.Open(dbPath, 0600, &bolt.Options{Timeout: 1 * time.Second})
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
 
-	// 创建所需的 bucket
-	err = db.Update(func(tx *bolt.Tx) error {
+	err = createBuckets(db)
+	if err != nil {
+		db.Close()
+		return nil, err
+	}
+
+	return &CacheManager{
+		db:   db,
+		path: dbPath,
+		mu:   sync.Mutex{},
+	}, nil
+}
+
+// createBuckets 创建所需的 buckets
+func createBuckets(db *bolt.DB) error {
+	return db.Update(func(tx *bolt.Tx) error {
 		for _, bucket := range []string{
 			bucketURLData,
 			bucketURLs,
@@ -58,21 +135,46 @@ func NewCacheManager(dbPath string) (*CacheManager, error) {
 		}
 		return nil
 	})
-	if err != nil {
-		db.Close()
-		return nil, err
-	}
-
-	return &CacheManager{
-		db:   db,
-		path: dbPath,
-		mu:   sync.Mutex{},
-	}, nil
 }
 
-// Close 关闭数据库
+// Close 关闭数据库并处理临时文件
 func (manager *CacheManager) Close() error {
-	return manager.db.Close()
+	err := manager.db.Close()
+	if err != nil {
+		return err
+	}
+
+	// 如果存在临时文件，需要压缩回原文件
+	if manager.temp != "" {
+		// 创建新的 gzip 文件
+		gzFile, err := os.Create(manager.path)
+		if err != nil {
+			return fmt.Errorf("failed to create gzip file: %w", err)
+		}
+		defer gzFile.Close()
+
+		// 创建 gzip writer
+		gzWriter := gzip.NewWriter(gzFile)
+		defer gzWriter.Close()
+
+		// 读取临时文件
+		tmpFile, err := os.Open(manager.temp)
+		if err != nil {
+			return fmt.Errorf("failed to open temp file: %w", err)
+		}
+		defer tmpFile.Close()
+
+		// 压缩写入
+		_, err = io.Copy(gzWriter, tmpFile)
+		if err != nil {
+			return fmt.Errorf("failed to compress file: %w", err)
+		}
+
+		// 删除临时文件
+		os.Remove(manager.temp)
+	}
+
+	return nil
 }
 
 func (manager *CacheManager) Stats() bolt.Stats {
