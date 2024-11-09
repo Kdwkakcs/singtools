@@ -12,31 +12,9 @@ SingTools 是一个基于 sing-box 的节点测试工具，可以测试节点的
 - 提供详细的测试统计
 
 ## 安装说明
-### 从源码安装
-
-1. 克隆仓库：
-
-```bash
-git clone https://github.com/Dkwkoaca/singtools.git
-```
-
-2. 使用 Make 编译：
-
-```bash
-make clean
-make prebuild ## 安装subconverter(https://github.com/tindy2013/subconverter)依赖
-make build
-```
-
 ### 从 Release 下载
 
 访问 [GitHub Releases](https://github.com/Dkwkoaca/singtools/releases) 页面下载对应平台的预编译版本：
-- `singtools-linux-amd64` - Linux 64位版本
-- `singtools-darwin-amd64` - macOS 64位版本
-- `singtools-windows-amd64.exe` - Windows 64位版本
-
-下载后重命名为 `singtools` (Windows 下为 `singtools.exe`)，并确保文件具有可执行权限。
-
 
 ## 1. 命令概述
 
@@ -44,7 +22,7 @@ make build
 singtools test [flags]
 ```
 
-主要用于测试 sing-box 支持的所有协议的延迟和速度，目前仅支持 sing-box 订阅格式。
+主要用于测试 sing-box 支持的所有协议的延迟和速度，支持本地配置文件和在线订阅链接，同时支持多种配置文件格式（包括 mixed, clash, sing-box等），目前仅支持输出为sing-box格式。
 
 ## 2. 命令参数
 
