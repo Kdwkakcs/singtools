@@ -14,7 +14,7 @@ SingTools 是一个基于 sing-box 的节点测试工具，可以测试节点的
 ## 安装说明
 ### 从 Release 下载
 
-访问 [GitHub Releases]([https://github.com/Dkwkoaca/singtools/releases](https://github.com/Kdwkakcs/singtools/releases)) 页面下载对应平台的预编译版本：
+访问 [GitHub Releases](https://github.com/Kdwkakcs/singtools/releases) 页面下载对应平台的预编译版本：
 
 ## 1. 命令概述
 
