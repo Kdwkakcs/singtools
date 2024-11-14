@@ -113,13 +113,13 @@ curl http://127.0.0.1:25500/sub?target=clash&url=/path/to/singtools/out.json
 
 ```json
 {
-  "group": "Default",
-  "speedtestMode": "all",
-  "pingUrl": "https://www.gstatic.com/generate_204",
-  "downloadUrl": "https://download.microsoft.com/download/2/7/A/27AF1BE6-DD20-4CB4-B154-EBAB8A7D4A7E/officedeploymenttool_18129-20030.exe",
-  "filter": "all",
-  "pingMethod": "http",
-  "sortMethod": "speed"
+  "group": "Default",                 // 分组名称，默认为 "Default"
+  "speedtestMode": "all",            // 测试模式: "all", "pingonly", "speedonly"
+  "pingUrl": "https://www.gstatic.com/generate_204",  // 延迟测试URL
+  "downloadUrl": "https://download.microsoft.com/download/2/7/A/27AF1BE6-DD20-4CB4-B154-EBAB8A7D4A7E/officedeploymenttool_18129-20030.exe",  // 速度测试下载文件
+  "filter": "all",                   // 节点过滤规则，默认为 "all" TODO: 后期增加更多过滤规则
+  "pingMethod": "http",              // 延迟测试方法: "http", "tcp"
+  "sortMethod": "speed"              // 排序方法: "speed", "ping"
 }
 ```
 
@@ -127,11 +127,11 @@ curl http://127.0.0.1:25500/sub?target=clash&url=/path/to/singtools/out.json
 
 ```json
 {
-  "concurrency": 5,
-  "timeout": 10,
-  "bufferSize": 32768,
-  "retryAttempts": 2,
-  "retryDelay": 1
+  "concurrency": 5,                  // 并发数，默认为 16
+  "timeout": 10,                     // 超时时间(秒)，默认为 10，最大为 16
+  "bufferSize": 32768,              // 缓冲区大小(字节)，默认为 32KB
+  "retryAttempts": 2,               // 重试次数，默认为 2
+  "retryDelay": 1                   // 重试延迟(秒)，默认为 1
 }
 ```
 
@@ -139,10 +139,16 @@ curl http://127.0.0.1:25500/sub?target=clash&url=/path/to/singtools/out.json
 
 ```json
 {
-  "detect": false,
-  "removeDup": false,
-  "enableMetrics": true,
-  "remoteIP": false
+  "detect": false,                   // 是否启用国家检测
+  "removeDup": false,               // 是否去除重复节点
+  "enableMetrics": true,            // 是否启用指标统计
+  "remoteIP": false,                // 是否检测远程IP
+  "logLevel": "INFO",               // 日志级别: "INFO", "DEBUG", "WARN", "ERROR"
+  "logFile": "speedtest.log",       // 日志文件路径
+  "geoipDbPath": "GeoLite2-Country.mmdb",  // GeoIP数据库路径
+  "downloadTimeout": 30,            // 下载超时时间(秒)，默认为 30
+  "downloadRetries": 2,             // 下载重试次数，默认为 2
+  "downloadBufferSize": 32768       // 下载缓冲区大小(字节)，默认为 32KB
 }
 ```
 
