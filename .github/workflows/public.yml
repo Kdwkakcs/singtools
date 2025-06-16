@@ -1,0 +1,192 @@
+name: public
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.gitignore'
+  pull_request:
+    branches:
+      - main
+
+concurrency:
+  group: ${{ github.ref }}-${{ github.workflow }}
+  cancel-in-progress: true
+
+jobs:
+  linux_build:
+    strategy:
+      matrix:
+        include:
+          - arch: x86
+            artifact: singtools_linux32
+            os: ubuntu-latest
+            platform: linux/amd64
+    runs-on: ${{ matrix.os }}
+    name: Linux ${{ matrix.arch }} Build
+    steps:
+      - name: Checkout base
+        uses: actions/checkout@v4
+        with:
+          repository: Kdwkakcs/singtools_private
+          token: ${{ secrets.token }}
+          path: singtools_private
+
+      - name: Setup Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.24'
+      - name: Build
+        run: |
+          cd singtools_private && make clean && make prebuild && make build-linux
+      - name: package binary
+        run: |
+          cd singtools_private && tar czf ${{ matrix.artifact }}.tar.gz singtools
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: singtools_private/${{ matrix.artifact }}.tar.gz
+      - name: Package Release
+        if: ${{ github.event_name != 'pull_request' && startsWith(github.ref, 'refs/tags/') }}
+        run: cd singtools_private && tar czf ${{ matrix.artifact }}.tar.gz singtools
+      - name: Draft Release
+        if: ${{ github.event_name != 'pull_request' && startsWith(github.ref, 'refs/tags/') }}
+        uses: softprops/action-gh-release@v2
+        with:
+          files: singtools_private/${{ matrix.artifact }}.tar.gz
+          draft: true
+
+  macos_build:
+    strategy:
+      matrix:
+        include:
+          - arch: x86_64
+            artifact: singtools_macos_x86_64
+            os: macos-13
+          - arch: arm64
+            artifact: singtools_macos_arm64
+            os: macos-14
+    runs-on: ${{ matrix.os }}
+    name: macOS ${{ matrix.arch }} Build
+    steps:
+      - name: Checkout base
+        uses: actions/checkout@v4
+        with:
+          repository: Kdwkakcs/singtools_private
+          token: ${{ secrets.token }}
+          path: singtools_private
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Setup Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.24'
+      - name: Build Singtools
+        run: |
+          cd singtools_private && make clean && make prebuild && make build-macos
+      - name: package binary
+        run: |
+          cd singtools_private && tar czf ${{ matrix.artifact }}.tar.gz singtools
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: singtools_private/${{ matrix.artifact }}.tar.gz
+      - name: Package Release
+        if: ${{ github.event_name != 'pull_request' && startsWith(github.ref, 'refs/tags/') }}
+        run: cd singtools_private && tar czf ${{ matrix.artifact }}.tar.gz singtools
+      - name: Draft Release
+        if: ${{ github.event_name != 'pull_request' && startsWith(github.ref, 'refs/tags/') }}
+        uses: softprops/action-gh-release@v2
+        with:
+          files: singtools_private/${{ matrix.artifact }}.tar.gz
+          draft: true
+
+  windows_build:
+    strategy:
+      matrix:
+        include:
+          - arch: amd64
+            artifact: singtools_win64
+            env: x86_64
+            msystem: MINGW64
+    runs-on: windows-latest
+    name: Windows ${{ matrix.arch }} Build
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - name: Checkout base
+        uses: actions/checkout@v4
+        with:
+          repository: Kdwkakcs/singtools_private
+          token: ${{ secrets.token }}
+          path: singtools_private
+      - name: Setup Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.24'
+      - name: Setup MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          update: true
+          install: base-devel git mingw-w64-${{ matrix.env }}-gcc mingw-w64-${{ matrix.env }}-cmake mingw-w64-${{ matrix.env }}-pcre2 patch
+          msystem: ${{ matrix.msystem }}
+          path-type: inherit
+      # - name: Add commit id into version
+      #   if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+      #   run: cd subconverter && SHA=$(git rev-parse --short HEAD) && sed -i 's/\(v[0-9]\.[0-9]\.[0-9]\)/\1-'"$SHA"'/' src/version.h
+      - name: Build
+        run: |
+          cd singtools_private && make clean && make prebuild && make build-windows
+      - name: package binary
+        run: |
+          cd singtools_private && 7z a ${{ matrix.artifact }}.7z singtools.exe
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: singtools_private/${{ matrix.artifact }}.7z
+      - name: Package Release
+        if: ${{ github.event_name != 'pull_request' && startsWith(github.ref, 'refs/tags/') }}
+        run: cd singtools_private && 7z a ${{ matrix.artifact }}.7z singtools
+      - name: Draft Release
+        if: ${{ github.event_name != 'pull_request' && startsWith(github.ref, 'refs/tags/') }}
+        uses: softprops/action-gh-release@v2
+        with:
+          files: singtools_private/${{ matrix.artifact }}.7z
+          draft: true
+
+  release:
+    name: Publish release when commit msg contains "bump"
+    needs: [linux_build, macos_build, windows_build]   # ← 等三条编译流水线都结束
+    if: ${{ github.event_name == 'push' && contains(github.event.head_commit.message, 'bump') }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist      
+
+      - name: Set tag name
+        id: tag
+        run: echo "TAG=v$(date +'%Y.%m.%d-%H%M%S')" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.TAG }}
+          name: ${{ steps.tag.outputs.TAG }}
+          files: dist/**
+          draft: false
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}     # repo 默认令牌，足够打 tag + 发 release

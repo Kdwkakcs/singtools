@@ -1,0 +1,11 @@
+{
+    "group": "job",
+    "speedtestMode": "pingonly",
+    "pingUrl": "https://www.gstatic.com/generate_204",
+    "pingMethod":"http",
+    "sortMethod":"speed",
+    "concurrency":50,
+    "timeout":5,
+    "detect": true,
+    "removeDup": true
+}
