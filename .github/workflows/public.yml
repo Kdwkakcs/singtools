@@ -166,10 +166,12 @@ jobs:
           draft: true
 
   release:
-    name: Publish release when commit msg contains "bump"
+    name: Publish release
     needs: [linux_build, macos_build, windows_build]   # ← 等三条编译流水线都结束
     if: ${{ github.event_name == 'push' && contains(github.event.head_commit.message, 'bump') }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: write   
 
     steps:
       - name: Download all build artifacts
@@ -179,7 +181,13 @@ jobs:
 
       - name: Set tag name
         id: tag
-        run: echo "TAG=v$(date +'%Y.%m.%d-%H%M%S')" >> "$GITHUB_OUTPUT"
+        run: |
+          if [[ "${{ github.event.head_commit.message }}" == *"bump"* ]]; then
+            TAG_VERSION=$(echo "${{ github.event.head_commit.message }}" | cut -d ' ' -f 2)
+            echo "TAG=v${TAG_VERSION}" >> "$GITHUB_OUTPUT"
+          else
+            echo "TAG=v$(date +'%Y.%m.%d-%H%M%S')" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
