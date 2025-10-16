@@ -77,7 +77,7 @@ Global Flags:
   -v, --version   Show version information
 ```
 
-主要用于测试 sing-box 支持的所有协议的延迟和速度，支持本地配置文件和在线订阅链接，同时支持多种配置文件格式（包括 mixed, clash, sing-box等），目前仅支持输出为sing-box格式，可以使用subconverter(https://github.com/asdlokj1qpi233/subconverter)转换为其他格式。
+主要用于测试 sing-box 支持的所有协议的延迟和速度，支持本地配置文件和在线订阅链接，同时支持多种配置文件格式（包括 mixed, clash, sing-box等），目前仅支持输出为sing-box格式，可以使用subconverter(https://github.com/asdlokj1qpi233/subconverter)   转换为其他格式。
 
 ### 简短说明如何使用subconverter进行不同订阅格式之间的转换，后期可能会增加输出为其他格式的功能
 ```bash
